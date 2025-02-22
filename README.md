@@ -163,17 +163,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📊 System Flow Diagram
 
 mermaid
-sequenceDiagram
-participant TD as Transaction Data
-participant DP as Data Processor
-participant FE as Feature Engineering
-participant RM as Risk Model
-participant DB as Dashboard
-TD->>DP: Generate transactions
-DP->>FE: Process data
-FE->>RM: Extract features
-RM->>DB: Calculate risk scores
-DB->>DB: Update visualization
+sequenceDiagram;
+    participant TD as Transaction Data;
+    participant DP as Data Processor;
+    participant FE as Feature Engineering;
+    participant RM as Risk Model;
+    participant DB as Dashboard;
+    TD->>DP: Generate transactions;
+    DP->>FE: Process data;
+    FE->>RM: Extract features;
+    RM->>DB: Calculate risk scores;
+    DB->>DB: Update visualization;
 
 ## 🛡 Security
 
