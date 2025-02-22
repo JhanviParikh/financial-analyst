@@ -34,15 +34,16 @@ This system provides comprehensive financial risk management capabilities includ
 
 The system follows a modular architecture:
 
-mermaid
-graph TD
-A[Transaction Data] --> B[Data Processing Layer]
-B --> C[Feature Engineering]
-C --> D[Risk Models]
-D --> E[Risk Scoring]
-E --> F[Dashboard]
-B --> G[Spark Processing]
-G --> C
+```mermaid
+graph TD;
+    A[Transaction Data] -->|Input| B[Data Processing Layer];
+    B -->|Process| C[Feature Engineering];
+    C -->|Generate| D[Risk Models];
+    D -->|Calculate| E[Risk Scoring];
+    E -->|Output| F[Dashboard];
+    B -->|Utilize| G[Spark Processing];
+    G -->|Support| C;
+```
 
 ## ✨ Features
 
@@ -57,46 +58,58 @@ G --> C
 
 ## 📁 Project Structure
 
+```plaintext
 financial_risk_management/
 ├── data/ # Data storage
 ├── src/
-│ ├── config/ # Configuration files
-│ ├── dashboard/ # Visualization components
-│ ├── data/ # Data processing modules
-│ ├── features/ # Feature engineering
-│ ├── models/ # Risk models
-│ ├── utils/ # Utility functions
-│ └── main.py # Application entry point
+│   ├── config/ # Configuration files
+│   ├── dashboard/ # Visualization components
+│   ├── data/ # Data processing modules
+│   ├── features/ # Feature engineering
+│   ├── models/ # Risk models
+│   ├── utils/ # Utility functions
+│   └── main.py # Application entry point
 ├── models/ # Trained model artifacts
 ├── setup.py # Package configuration
 └── spark.policy # Spark configuration
+```
 
 ## 🚀 Installation
 
 1. Clone the repository:
-   bash
-   git clone https://github.com/yourusername/financial-analyst.git
-   cd financial-analyst
+
+```bash
+git clone https://github.com/yourusername/financial-risk-management.git
+cd financial-risk-management
+```
 
 2. Create and activate virtual environment:
-   bash
-   python -m venv .venv
-   source .venv/bin/activate # On Windows: .venv\Scriptsctivate
+
+```bash
+python -m venv .venv
+source .venv/bin/activate # On Windows: .venv\Scripts\activate
+```
 
 3. Install dependencies:
-   bash
-   pip install -e .
+
+```bash
+pip install -e .
+```
 
 ## 💻 Usage
 
 1. Configure your environment:
-   bash
-   cp .env.example .env
-   Edit .env with your settings
+
+```bash
+cp .env.example .env
+Edit .env with your settings
+```
 
 2. Start the system:
-   bash
-   python src/main.py
+
+```bash
+python src/main.py
+```
 
 3. Access the dashboard:
    http://localhost:8050
@@ -123,12 +136,16 @@ Key configuration parameters in `src/config/settings.py`:
 ### Setting up development environment
 
 1. Install development dependencies:
-   bash
-   pip install -e ".[dev]"
+
+```bash
+pip install -e ".[dev]"
+```
 
 2. Run tests:
-   bash
-   pytest
+
+```bash
+pytest
+```
 
 ## 📈 Performance Metrics
 
@@ -162,7 +179,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 System Flow Diagram
 
-mermaid
+```mermaid
 sequenceDiagram;
     participant TD as Transaction Data;
     participant DP as Data Processor;
@@ -174,6 +191,7 @@ sequenceDiagram;
     FE->>RM: Extract features;
     RM->>DB: Calculate risk scores;
     DB->>DB: Update visualization;
+```
 
 ## 🛡 Security
 

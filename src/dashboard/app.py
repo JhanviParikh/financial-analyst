@@ -28,21 +28,33 @@ app.layout = html.Div([
     html.Div([
         # Left column
         html.Div([
-            dcc.Graph(id='transactions-timeline'),
-            dcc.Graph(id='risk-heatmap'),
+            dcc.Loading(
+                id="loading-1",
+                children=[
+                    dcc.Graph(id='transactions-timeline'),
+                    dcc.Graph(id='risk-heatmap'),
+                ],
+                type="circle",
+            ),
         ], style={'width': '60%', 'display': 'inline-block', 'padding': '20px'}),
 
         # Right column
         html.Div([
-            dcc.Graph(id='transaction-types'),
-            dcc.Graph(id='location-scatter'),
+            dcc.Loading(
+                id="loading-2",
+                children=[
+                    dcc.Graph(id='transaction-types'),
+                    dcc.Graph(id='location-scatter'),
+                ],
+                type="circle",
+            ),
         ], style={'width': '40%', 'display': 'inline-block', 'padding': '20px'}),
     ], style={'display': 'flex'}),
 
     # Update interval
     dcc.Interval(
         id='interval-component',
-        interval=2*1000,  # Update every 2 seconds (was 5)
+        interval=2*1000,  # Update every 2 seconds
         n_intervals=0
     )
 ], style={'backgroundColor': '#ffffff', 'fontFamily': 'Arial'})
@@ -118,122 +130,146 @@ def load_latest_data():
         return pd.DataFrame()
 
 @app.callback(
-    [Output('total-transactions', 'children'),
-     Output('suspicious-transactions', 'children'),
-     Output('average-amount', 'children'),
-     Output('transactions-timeline', 'figure'),
-     Output('risk-heatmap', 'figure'),
-     Output('transaction-types', 'figure'),
-     Output('location-scatter', 'figure')],
+    [
+        Output('total-transactions', 'children'),
+        Output('suspicious-transactions', 'children'),
+        Output('average-amount', 'children'),
+        Output('transactions-timeline', 'figure'),
+        Output('risk-heatmap', 'figure'),
+        Output('transaction-types', 'figure'),
+        Output('location-scatter', 'figure')
+    ],
     [Input('interval-component', 'n_intervals')]
 )
 def update_dashboard(n):
-    df = load_latest_data()
-    
-    if df.empty:
-        empty_fig = go.Figure()
-        empty_fig.update_layout(
-            title="No data available",
-            xaxis_title="",
-            yaxis_title=""
+    """Update dashboard with latest data"""
+    try:
+        # Load data
+        df = load_latest_data()
+        
+        if df.empty:
+            print("No data loaded")
+            return [
+                html.Div([html.H4("Total Transactions"), html.P("0")]),
+                html.Div([html.H4("Suspicious Transactions"), html.P("0")]),
+                html.Div([html.H4("Average Amount"), html.P("$0.00")]),
+                go.Figure(),
+                go.Figure(),
+                go.Figure(),
+                go.Figure()
+            ]
+
+        # Print debug info
+        print(f"\nDataFrame Info:")
+        print(f"Shape: {df.shape}")
+        print(f"Columns: {df.columns.tolist()}")
+        print(f"Sample data:\n{df.head()}")
+        
+        # Calculate metrics
+        total_trans = len(df)
+        suspicious_trans = df['is_suspicious'].sum() if 'is_suspicious' in df.columns else 0
+        avg_amount = df['amount'].mean() if 'amount' in df.columns else 0
+
+        # Create timeline
+        df['minute'] = pd.to_datetime(df['timestamp']).dt.floor('min')
+        timeline_data = df.groupby('minute').agg({
+            'transaction_id': 'count',
+            'is_suspicious': 'sum'
+        }).reset_index()
+        
+        timeline = go.Figure()
+        timeline.add_trace(go.Scatter(
+            x=timeline_data['minute'],
+            y=timeline_data['transaction_id'],
+            name='All Transactions',
+            line=dict(color='blue')
+        ))
+        timeline.add_trace(go.Scatter(
+            x=timeline_data['minute'],
+            y=timeline_data['is_suspicious'],
+            name='Suspicious',
+            line=dict(color='red')
+        ))
+        timeline.update_layout(
+            title=f'Transaction Volume Over Time (Total: {total_trans:,})',
+            yaxis_title="Number of Transactions",
+            xaxis_title="Time",
+            height=400
         )
+
+        # Create risk heatmap
+        risk_columns = ['amount_threshold_flag', 'time_risk_score', 'location_risk_score', 'risk_score']
+        available_risk_columns = [col for col in risk_columns if col in df.columns]
+        if available_risk_columns:
+            corr_matrix = df[available_risk_columns].corr()
+            heatmap = px.imshow(
+                corr_matrix,
+                title='Risk Factor Correlation',
+                labels=dict(color="Correlation"),
+                color_continuous_scale='RdBu',
+                height=400
+            )
+        else:
+            heatmap = go.Figure()
+            heatmap.update_layout(title="No risk data available", height=400)
+
+        # Create transaction type distribution
+        if 'transaction_type' in df.columns:
+            type_counts = df['transaction_type'].value_counts()
+            types_pie = px.pie(
+                values=type_counts.values,
+                names=type_counts.index,
+                title=f'Transaction Types Distribution (Last {len(df)} Transactions)',
+                height=400
+            )
+        else:
+            types_pie = go.Figure()
+            types_pie.update_layout(title="No transaction type data available", height=400)
+
+        # Create location scatter plot
+        if all(col in df.columns for col in ['latitude', 'longitude', 'risk_score']):
+            location_scatter = px.scatter(
+                df,
+                x='longitude',
+                y='latitude',
+                color='risk_score',
+                size='amount',
+                hover_data=['transaction_type', 'amount', 'risk_score'],
+                title='Transaction Locations',
+                color_continuous_scale='RdYlBu_r',
+                size_max=30,
+                height=400
+            )
+            location_scatter.update_layout(
+                coloraxis_colorbar_title="Risk Score"
+            )
+        else:
+            location_scatter = go.Figure()
+            location_scatter.update_layout(title="No location data available", height=400)
+
         return [
-            html.Div([html.H4("Total Transactions"), html.P("0")]),
-            html.Div([html.H4("Suspicious Transactions"), html.P("0")]),
-            html.Div([html.H4("Average Amount"), html.P("$0.00")]),
-            empty_fig,
-            empty_fig,
-            empty_fig,
-            empty_fig
+            html.Div([html.H4("Total Transactions"), html.P(f"{total_trans:,}")]),
+            html.Div([html.H4("Suspicious Transactions"), html.P(f"{suspicious_trans:,}")]),
+            html.Div([html.H4("Average Amount"), html.P(f"${avg_amount:,.2f}")]),
+            timeline,
+            heatmap,
+            types_pie,
+            location_scatter
         ]
 
-    # Calculate metrics
-    total_trans = len(df)
-    suspicious_trans = df['is_suspicious'].sum()  # Use the new column
-    avg_amount = df['amount'].mean()
-
-    # Create timeline
-    df['minute'] = pd.to_datetime(df['timestamp']).dt.floor('min')
-    timeline_data = df.groupby('minute').agg({
-        'transaction_id': 'count',
-        'is_suspicious': 'sum'
-    }).reset_index()
-    
-    timeline = go.Figure()
-    timeline.add_trace(go.Scatter(
-        x=timeline_data['minute'],
-        y=timeline_data['transaction_id'],
-        name='All Transactions',
-        line=dict(color='blue')
-    ))
-    timeline.add_trace(go.Scatter(
-        x=timeline_data['minute'],
-        y=timeline_data['is_suspicious'],
-        name='Suspicious',
-        line=dict(color='red')
-    ))
-    timeline.update_layout(
-        title=f'Transaction Volume Over Time (Total: {total_trans:,})',
-        yaxis_title="Number of Transactions",
-        xaxis_title="Time"
-    )
-
-    # Create risk heatmap
-    risk_columns = ['amount_threshold_flag', 'time_risk_score', 'location_risk_score', 'risk_score']
-    available_risk_columns = [col for col in risk_columns if col in df.columns]
-    if available_risk_columns:
-        corr_matrix = df[available_risk_columns].corr()
-        heatmap = px.imshow(
-            corr_matrix,
-            title='Risk Factor Correlation',
-            labels=dict(color="Correlation"),
-            color_continuous_scale='RdBu'
-        )
-    else:
-        heatmap = go.Figure()
-        heatmap.update_layout(title="No risk data available")
-
-    # Create transaction type distribution
-    if 'transaction_type' in df.columns:
-        type_counts = df['transaction_type'].value_counts()
-        types_pie = px.pie(
-            values=type_counts.values,
-            names=type_counts.index,
-            title=f'Transaction Types Distribution (Last {len(df)} Transactions)'
-        )
-    else:
-        types_pie = go.Figure()
-        types_pie.update_layout(title="No transaction type data available")
-
-    # Create location scatter plot
-    if 'latitude' in df.columns and 'longitude' in df.columns:
-        location_scatter = px.scatter(
-            df,
-            x='longitude',
-            y='latitude',
-            color='risk_score',
-            size='amount',
-            hover_data=['transaction_type', 'amount', 'risk_score'],
-            title='Transaction Locations',
-            color_continuous_scale='RdYlBu_r',  # Red for high risk, blue for low risk
-            size_max=30
-        )
-        location_scatter.update_layout(
-            coloraxis_colorbar_title="Risk Score"
-        )
-    else:
-        location_scatter = go.Figure()
-        location_scatter.update_layout(title="No location data available")
-
-    return [
-        html.Div([html.H4("Total Transactions"), html.P(f"{total_trans:,}")]),
-        html.Div([html.H4("Suspicious Transactions"), html.P(f"{suspicious_trans:,}")]),
-        html.Div([html.H4("Average Amount"), html.P(f"${avg_amount:,.2f}")]),
-        timeline,
-        heatmap,
-        types_pie,
-        location_scatter
-    ]
+    except Exception as e:
+        print(f"Error updating dashboard: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return [
+            html.Div([html.H4("Total Transactions"), html.P("Error")]),
+            html.Div([html.H4("Suspicious Transactions"), html.P("Error")]),
+            html.Div([html.H4("Average Amount"), html.P("Error")]),
+            go.Figure(),
+            go.Figure(),
+            go.Figure(),
+            go.Figure()
+        ]
 
 # Add custom CSS
 app.index_string = '''
