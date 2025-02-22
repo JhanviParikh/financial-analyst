@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.VectorAssembler","timestamp":1740189204491,"sparkVersion":"3.5.4","uid":"VectorAssembler_fc140549fcde","paramMap":{"handleInvalid":"skip","outputCol":"features","inputCols":["amount","account_id","merchant_id"]},"defaultParamMap":{"handleInvalid":"error","outputCol":"VectorAssembler_fc140549fcde__output"}}
